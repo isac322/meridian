@@ -154,6 +154,12 @@ Agent-specific behavior is isolated behind the `AgentAdapter` interface (`adapte
 | Passthrough mode | `passthroughTools.ts` | Agent-agnostic but OpenCode-motivated. Keep as-is. |
 | `ALLOWED_MCP_TOOLS` usage in `server.ts` | Line ~176 | Used for `buildAgentDefinitions`. Move when adapter handles agent defs. |
 
+### Anthropic Server Tools vs Client Passthrough
+
+Meridian's passthrough path is designed for client-executed tools: the incoming agent sends tool schemas, `passthroughTools.ts` registers them as `mcp__oc__*` tools for the Claude Agent SDK, and `server.ts` blocks/captures those calls so the client can execute them. This is different from Anthropic server-executed tools such as `web_search_20250305`, where the native Messages API executes the tool and returns blocks like `server_tool_use` and `web_search_tool_result` in the same response.
+
+That distinction matters for nested provider calls. For example, OpenCode can call an `opencode-websearch` client tool named `web-search`; that plugin may then send a second Anthropic Messages request with the native `web_search` server tool. If that nested provider also points at Meridian, the request enters the Agent SDK translation path instead of native Anthropic server-tool passthrough semantics. Track #488 before adding support so the implementation preserves both the OpenCode client-tool loop and server-tool response shapes intentionally.
+
 ## Session Management
 
 Sessions map an agent's conversation ID to a Claude SDK session ID. Two caches work in tandem:
